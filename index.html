@@ -273,7 +273,6 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
 
           <div class="peek">
             <div class="peek-title">👀 Need a nudge? Peek at the chaos</div>
-            <div class="peek-hook" id="countHook">people are already dropping wild ideas</div>
             <div class="surprise-box" id="surpriseBox">
               <div class="note-empty">Drop your idea above, then tap below to see what others dared 👇</div>
             </div>
@@ -363,36 +362,25 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
   var SEED = IDEAS.map(function(t,i){ return { n:t, c:TAGS[i%TAGS.length], city:CITIES[i%CITIES.length], col:PALETTE[i%PALETTE.length] }; });
   var POOL = SEED.slice();
 
-  function setCount(realN){ $("#countHook").textContent = Number(SEED_COUNT + (realN||0)).toLocaleString("en-IN") + " people already in the queue & shared their idea — want to see? 👀"; }
-
-  /* load ideas + count: from your backend if BACKEND_URL is set, else demo storage */
+  /* load real ideas into the Surprise pool (no counter shown on the page) */
   (async function boot(){
     if(BACKEND_URL){
       var data = await backendRead();
-      if(data){
-        if(typeof data.count === "number") setCount(data.count);
-        if(data.ideas && data.ideas.length){
-          data.ideas.forEach(function(o){ if(o && o.n){ POOL.push({ n:o.n, c:"🔥 Just dropped", city:o.city||"", col:"#F4BE18" }); } });
-        }
-      } else { setCount(0); }
+      if(data && data.ideas && data.ideas.length){
+        data.ideas.forEach(function(o){ if(o && o.n){ POOL.push({ n:o.n, c:"🔥 Just dropped", city:o.city||"", col:"#F4BE18" }); } });
+      }
       return;
     }
     // ---- demo mode (Claude preview storage) ----
     try{
-      if(window.storage){
-        try{ var r = await window.storage.get("lokall:count", true); setCount((r && parseInt(r.value,10)) || 0); }
-        catch(_){ setCount(0); }
-        if(window.storage.list){
-          try{
-            var res = await window.storage.list("lokall:pubidea:", true);
-            if(res && res.keys){ var keys = res.keys.slice(-40);
-              for(var i=0;i<keys.length;i++){ try{ var g = await window.storage.get(keys[i], true);
-                if(g){ var o = JSON.parse(g.value); if(o && o.n){ POOL.push({ n:o.n, c:o.c||"🔥 Just dropped", city:o.city||"", col:o.col||"#F4BE18" }); } } }catch(__){} }
-            }
-          }catch(_){}
+      if(window.storage && window.storage.list){
+        var res = await window.storage.list("lokall:pubidea:", true);
+        if(res && res.keys){ var keys = res.keys.slice(-40);
+          for(var i=0;i<keys.length;i++){ try{ var g = await window.storage.get(keys[i], true);
+            if(g){ var o = JSON.parse(g.value); if(o && o.n){ POOL.push({ n:o.n, c:o.c||"🔥 Just dropped", city:o.city||"", col:o.col||"#F4BE18" }); } } }catch(__){} }
         }
-      } else { setCount(0); }
-    }catch(_){ setCount(0); }
+      }
+    }catch(_){}
   })();
 
   /* ---- surprise button (no form required) ---- */
