@@ -322,7 +322,7 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
   window.addEventListener("load", fitBanner);
   if(document.fonts && document.fonts.ready){ document.fonts.ready.then(fitBanner); }
 
-  var BASE = 1247;
+  var SEED_COUNT = 511;   // shown as "already in the queue"; the real submission count is added on top
 
   // =====================================================================
   //  BACKEND SETUP
@@ -363,7 +363,7 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
   var SEED = IDEAS.map(function(t,i){ return { n:t, c:TAGS[i%TAGS.length], city:CITIES[i%CITIES.length], col:PALETTE[i%PALETTE.length] }; });
   var POOL = SEED.slice();
 
-  function setCount(n){ $("#countHook").textContent = Number(n).toLocaleString("en-IN") + " crazy ideas already dropped"; }
+  function setCount(realN){ $("#countHook").textContent = Number(SEED_COUNT + (realN||0)).toLocaleString("en-IN") + " people already in the queue & shared their idea — want to see? 👀"; }
 
   /* load ideas + count: from your backend if BACKEND_URL is set, else demo storage */
   (async function boot(){
@@ -374,14 +374,14 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
         if(data.ideas && data.ideas.length){
           data.ideas.forEach(function(o){ if(o && o.n){ POOL.push({ n:o.n, c:"🔥 Just dropped", city:o.city||"", col:"#F4BE18" }); } });
         }
-      } else { setCount(BASE); }
+      } else { setCount(0); }
       return;
     }
     // ---- demo mode (Claude preview storage) ----
     try{
       if(window.storage){
-        try{ var r = await window.storage.get("lokall:count", true); setCount((r && parseInt(r.value,10)) || BASE); }
-        catch(_){ setCount(BASE); }
+        try{ var r = await window.storage.get("lokall:count", true); setCount((r && parseInt(r.value,10)) || 0); }
+        catch(_){ setCount(0); }
         if(window.storage.list){
           try{
             var res = await window.storage.list("lokall:pubidea:", true);
@@ -391,8 +391,8 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
             }
           }catch(_){}
         }
-      } else { setCount(BASE); }
-    }catch(_){ setCount(BASE); }
+      } else { setCount(0); }
+    }catch(_){ setCount(0); }
   })();
 
   /* ---- surprise button (no form required) ---- */
@@ -444,26 +444,26 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
     // Live mode: send to your backend and use the count it returns.
     if(BACKEND_URL){
       var live = await backendWrite(d);
-      return (live != null) ? live : (BASE + 1);
+      return (live != null) ? live : 1;
     }
     // ---- demo mode: nothing leaves the browser ----
-    var n = BASE + 1;
+    var n = 1;
     try{
       if(window.storage){
         var r=null; try{ r = await window.storage.get("lokall:count", true); }catch(_){}
-        var cur = (r && parseInt(r.value,10)) || BASE; n = cur + 1;
+        var cur = (r && parseInt(r.value,10)) || 0; n = cur + 1;
         await window.storage.set("lokall:count", String(n), true);
         await window.storage.set("lokall:entry:"+Date.now(), JSON.stringify(d), false);
         await window.storage.set("lokall:pubidea:"+Date.now(), JSON.stringify({ n:d.idea, c:"🔥 Just dropped", city:d.city, col:"#F4BE18" }), true);
-      } else { n = BASE + 1 + Math.floor(Math.random()*40); }
-    }catch(_){ n = BASE + 1 + Math.floor(Math.random()*40); }
+      } else { n = 1 + Math.floor(Math.random()*30); }
+    }catch(_){ n = 1 + Math.floor(Math.random()*30); }
     return n;
   }
 
   $("#joinBtn").addEventListener("click", async function(){
     // honeypot: if the hidden field has anything in it, it's a bot — show success but save nothing
     if(($("#f-website").value || "").trim() !== ""){
-      $("#queueNo").textContent = "#" + (BASE+1).toLocaleString("en-IN");
+      $("#queueNo").textContent = "#" + (SEED_COUNT + 1).toLocaleString("en-IN");
       $("#yourIdea").textContent = "\u201C" + ($("#f-idea").value.trim() || "—") + "\u201D";
       $("#mainCard").hidden = true; $("#successCard").hidden = false; return;
     }
@@ -472,7 +472,7 @@ l-265 3 1 50 c0 28 3 118 7 200 4 83 12 299 17 480 5 182 13 476 19 655 14
     var btn = this; btn.disabled = true; btn.textContent = "Saving…";
     var n = await save(d);
     POOL.push({ n:d.idea, c:"🔥 Just dropped", city:d.city, col:"#F4BE18" });
-    $("#queueNo").textContent = "#" + n.toLocaleString("en-IN");
+    $("#queueNo").textContent = "#" + (SEED_COUNT + n).toLocaleString("en-IN");
     $("#yourIdea").textContent = "\u201C" + d.idea + "\u201D";
     $("#mainCard").hidden = true; $("#successCard").hidden = false;
     window.scrollTo({ top:0, behavior: reduce?"auto":"smooth" });
